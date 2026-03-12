@@ -8,6 +8,14 @@ An intelligent support ticket orchestration system that combines AI automation w
 
 Built with **React + Vite**, providing fast HMR and ESLint support.
 
+### Run the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
 Two official Vite plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) — uses Babel for Fast Refresh
@@ -21,7 +29,7 @@ Two official Vite plugins are available:
 
 ```bash
 git clone <repo-url>
-cd optisolve
+cd Optisolve
 ```
 
 ### 2. Create and activate a virtual environment

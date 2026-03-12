@@ -1,7 +1,9 @@
+from typing import Dict, Union
+
 from backend.utils.fake_ai_generator import generic_reply, password_reply, vpn_reply
 
 
-def analyze_ticket(text: str) -> dict[str, float | str]:
+def analyze_ticket(text: str) -> Dict[str, Union[float, str]]:
     normalized_text = text.lower()
 
     if "vpn" in normalized_text:

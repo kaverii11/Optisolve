@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Clock, AlertTriangle, MoreHorizontal, Send, Loader2 } from "lucide-react";
 import AICoPilotPanel from "./AICoPilotPanel";
+import { sendAgentResponse, getTicketStatus } from "../services/api";
 
 function MessageBubble({ message }) {
     const isUser = message.from === "user";
@@ -42,7 +44,11 @@ function MessageBubble({ message }) {
     );
 }
 
-export default function TicketDetail({ ticket, liveAI, aiLoading, aiError }) {
+export default function TicketDetail({ ticket, liveAI, aiLoading, aiError, onTicketResolved }) {
+    const [replyText, setReplyText] = useState("");
+    const [sending, setSending] = useState(false);
+    const [localError, setLocalError] = useState(null);
+
     if (!ticket) {
         return (
             <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
@@ -60,6 +66,43 @@ export default function TicketDetail({ ticket, liveAI, aiLoading, aiError }) {
 
     // Use live API data when available, fall back to mock data
     const aiData = liveAI || ticket.ai;
+
+    const hasBackendId = !!ticket.backendId || Number.isInteger(ticket.id);
+
+    async function handleSendReply() {
+        if (!replyText.trim()) return;
+        if (!hasBackendId) return;
+
+        setSending(true);
+        setLocalError(null);
+
+        const targetId = ticket.backendId ?? ticket.id;
+
+        try {
+            await sendAgentResponse(targetId, replyText.trim());
+
+            // Poll backend status until resolved (or a few attempts)
+            let finalReply = null;
+            for (let i = 0; i < 5; i++) {
+                const status = await getTicketStatus(targetId);
+                if (status.status === "resolved") {
+                    finalReply = status.reply;
+                    break;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+
+            if (onTicketResolved) {
+                onTicketResolved(targetId, finalReply ?? replyText.trim());
+            }
+
+            setReplyText("");
+        } catch (err) {
+            setLocalError(err.message || "Failed to send response");
+        } finally {
+            setSending(false);
+        }
+    }
 
     return (
         <div className="flex-1 flex flex-col min-w-0 bg-white">
@@ -126,6 +169,12 @@ export default function TicketDetail({ ticket, liveAI, aiLoading, aiError }) {
                     </div>
                 )}
 
+                {localError && (
+                    <div className="bg-red-50 rounded-2xl border border-red-200 p-4 mt-4 text-xs text-red-600">
+                        {localError}
+                    </div>
+                )}
+
                 {!aiLoading && !aiError && aiData && (
                     <AICoPilotPanel ai={aiData} isLive={!!liveAI} />
                 )}
@@ -137,9 +186,17 @@ export default function TicketDetail({ ticket, liveAI, aiLoading, aiError }) {
                     <input
                         type="text"
                         placeholder="Type a reply or use AI draft…"
-                        className="flex-1 px-4 py-2.5 text-sm rounded-xl bg-white border border-slate-200 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        disabled={sending || !hasBackendId}
+                        className="flex-1 px-4 py-2.5 text-sm rounded-xl bg-white border border-slate-200 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                     />
-                    <button className="p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200 cursor-pointer">
+                    <button
+                        onClick={handleSendReply}
+                        disabled={sending || !replyText.trim() || !hasBackendId}
+                        className="p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {sending && <Loader2 size={14} className="animate-spin" />}
                         <Send size={16} />
                     </button>
                 </div>

@@ -1,4 +1,5 @@
 from threading import Lock
+from typing import Optional
 
 from backend.models.ticket_models import Ticket
 
@@ -33,10 +34,10 @@ class TicketStore:
             self._tickets[ticket_id] = ticket
             return ticket
 
-    def get_ticket(self, ticket_id: int) -> Ticket | None:
+    def get_ticket(self, ticket_id: int) -> Optional[Ticket]:
         return self._tickets.get(ticket_id)
 
-    def update_ticket(self, ticket_id: int, **updates) -> Ticket | None:
+    def update_ticket(self, ticket_id: int, **updates) -> Optional[Ticket]:
         ticket = self._tickets.get(ticket_id)
         if not ticket:
             return None
