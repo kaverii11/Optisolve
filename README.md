@@ -52,7 +52,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Create the environment file
+### 4. Create the environment file // not needed rn 
 
 Create a `.env` file in the project root and add:
 
