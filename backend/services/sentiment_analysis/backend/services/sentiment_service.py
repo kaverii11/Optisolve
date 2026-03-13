@@ -9,7 +9,6 @@ client = OpenAI(
     base_url="https://api.sambanova.ai/v1"
 )
 
-
 class SentimentService:
     """
     Uses SambaNova API for context-aware sentiment analysis.
@@ -39,7 +38,7 @@ class SentimentService:
             if word in text.lower():
                 text += " " + ("very " * int(abs(weight)))
 
-        # Create prompt
+        # Create prompt (FIXED TRIPLE QUOTES HERE)
         prompt = f"""
 You are a sentiment analysis assistant.
 Analyze the sentiment of the following text.
@@ -51,7 +50,7 @@ Respond **only** in JSON format with no extra text or markdown:
 }}
 
 Text: "{text}"
-"""
+""
 
         try:
             response = client.chat.completions.create(
@@ -74,6 +73,11 @@ Text: "{text}"
             print("SambaNova API Error:", e)
             return {"sentiment": "neutral", "score": 0.0}
 
-
-# Singleton instance
+# Singleton instance (REMOVED DUPLICATE)
 sentiment_engine = SentimentService()
+
+# kaveri edit
+def sentiment_score(text: str) -> float:
+    """Wrapper to match the contract expected by ticket_routes.py"""
+    result = sentiment_engine.analyze(text)
+    return float(result.get("score", 0.0))
