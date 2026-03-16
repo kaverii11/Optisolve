@@ -44,7 +44,7 @@ def analyze_ticket(text: str) -> Dict[str, Union[float, str]]:
     
     top_similarity = similarities[0]
     mean_similarity = np.mean(similarities)
-    retrieval_conf = 0.6 * top_similarity + 0.4 * mean_similarity  # ← changed
+    retrieval_conf = 0.75 * top_similarity + 0.25 * mean_similarity  # ← changed
     consistency = 1 - np.std(similarities)
     
     confidence = (0.7 * retrieval_conf) + (0.3 * consistency)
