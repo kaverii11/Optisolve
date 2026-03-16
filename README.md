@@ -57,7 +57,8 @@ pip install -r requirements.txt
 Create a `.env` file in the project root and add:
 
 ```env
-OPENAI_API_KEY=your_api_key_here
+SAMBANOVA_API_KEY=your_api_key_here
+GROQ_API_KEY=your_api_key_here
 ```
 
 ### 5. Run the backend server
