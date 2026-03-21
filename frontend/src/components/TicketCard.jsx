@@ -1,55 +1,55 @@
 const colorMap = {
-    red: "bg-red-50 text-red-700 border border-red-200",
-    orange: "bg-amber-50 text-amber-700 border border-amber-200",
-    green: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    blue: "bg-blue-50 text-blue-700 border border-blue-200",
+    red: "pill-angry",
+    orange: "pill-neutral",
+    green: "pill-positive",
+    blue: "bg-blue-500/15 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded-full text-xs font-semibold",
 };
 
 const statusDot = {
-    urgent: "bg-red-500",
-    active: "bg-emerald-500",
-    pending: "bg-amber-400",
+    urgent: "bg-error",
+    active: "bg-success",
+    pending: "bg-warning",
 };
 
 export default function TicketCard({ ticket, selected, onClick }) {
     return (
         <button
             onClick={onClick}
-            className={`w-full text-left p-4 rounded-xl border cursor-pointer transition-all duration-200
+            className={`w-full text-left p-4 rounded-2xl cursor-pointer transition-all duration-200 border
         ${selected
-                    ? "bg-blue-50/80 border-blue-200 shadow-sm shadow-blue-100 ring-1 ring-blue-200"
-                    : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm"
+                    ? "bg-[#1E293B] border-accent shadow-[0_0_15px_rgba(99,102,241,0.15)] ring-1 ring-accent"
+                    : "bg-bg-card border-border-subtle hover:border-text-muted hover:shadow-lg hover:-translate-y-[1px]"
                 }`}
         >
             {/* Top row: avatar + name + status dot */}
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-3">
                 <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0
-            ${selected ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"}`}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-sm
+            ${selected ? "bg-gradient-to-br from-accent to-blue-500 text-white" : "bg-bg-sidebar border border-border-subtle text-text-secondary"}`}
                 >
                     {ticket.avatar}
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-slate-800 truncate">
+                        <span className="font-semibold text-[13px] text-text-primary truncate tracking-tight">
                             {ticket.user}
                         </span>
                         <span
-                            className={`w-2 h-2 rounded-full shrink-0 ${statusDot[ticket.status] || "bg-slate-300"}`}
+                            className={`w-2 h-2 rounded-full shrink-0 ${statusDot[ticket.status] || "bg-text-muted"}`}
                         />
                     </div>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
+                    <p className="text-xs text-text-secondary truncate mt-0.5">
                         #{ticket.id} · {ticket.snippet}
                     </p>
                 </div>
             </div>
 
             {/* Badges */}
-            <div className="flex flex-wrap gap-1.5 mt-2">
+            <div className="flex flex-wrap gap-2 mt-2">
                 {ticket.badges.map((badge) => (
                     <span
                         key={badge.label}
-                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${colorMap[badge.color] || ""}`}
+                        className={colorMap[badge.color] || "text-[10px] font-medium px-2 py-0.5 rounded-full bg-bg-sidebar text-text-secondary"}
                     >
                         {badge.label}
                     </span>

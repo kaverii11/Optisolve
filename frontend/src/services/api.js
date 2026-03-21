@@ -46,3 +46,10 @@ export async function sendAgentResponse(ticketId, finalReply) {
         body: JSON.stringify({ ticket_id: ticketId, final_reply: finalReply }),
     });
 }
+
+// System: check the health of the backend server
+export async function checkServerHealth() {
+    return request("/health", {
+        method: "GET",
+    });
+}

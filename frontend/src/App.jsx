@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import Dashboard from "./components/Dashboard";
+import Analytics from "./components/Analytics";
+import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
 import TicketQueue from "./components/TicketQueue";
 import TicketDetail from "./components/TicketDetail";
@@ -41,9 +44,9 @@ function mapAgentTicketToUi(agentTicket) {
       },
     ],
     ai: {
-      baseRetrieval: agentTicket.confidence,
-      sentimentModifier: 0,
-      finalScore: agentTicket.confidence,
+      baseRetrieval: Math.round(agentTicket.base_confidence * 100),
+      sentimentModifier: Math.round(agentTicket.sentiment_penalty * 100),
+      finalScore: Math.round(agentTicket.final_confidence * 100),
       status: "Waiting for agent",
       draft: agentTicket.draft_reply,
     },
@@ -51,6 +54,7 @@ function mapAgentTicketToUi(agentTicket) {
 }
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState("Active Tickets");
   const [tickets, setTickets] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [liveAI, setLiveAI] = useState(null);
@@ -223,21 +227,31 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen flex bg-white font-sans text-slate-800 antialiased">
-      <Sidebar />
-      <TicketQueue
-        tickets={tickets}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-        onSimulate={() => setDrawerOpen(true)}
-      />
-      <TicketDetail
-        ticket={selectedTicket}
-        liveAI={liveAI}
-        aiLoading={aiLoading}
-        aiError={aiError}
-        onTicketResolved={handleTicketResolved}
-      />
+    <div className="h-screen w-screen flex bg-bg-main font-sans text-text-primary antialiased">
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      {activeTab === "Active Tickets" ? (
+        <>
+          <TicketQueue
+            tickets={tickets}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onSimulate={() => setDrawerOpen(true)}
+          />
+          <TicketDetail
+            ticket={selectedTicket}
+            liveAI={liveAI}
+            aiLoading={aiLoading}
+            aiError={aiError}
+            onTicketResolved={handleTicketResolved}
+          />
+        </>
+      ) : activeTab === "Dashboard" ? (
+        <Dashboard />
+      ) : activeTab === "Analytics" ? (
+        <Analytics />
+      ) : (
+        <Settings />
+      )}
       <MetricsToast />
       <SimulateTicketDrawer
         open={drawerOpen}

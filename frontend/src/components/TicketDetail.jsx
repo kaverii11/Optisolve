@@ -8,9 +8,9 @@ function MessageBubble({ message }) {
     return (
         <div className={`flex gap-3 ${isUser ? "" : "flex-row-reverse"}`}>
             <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${isUser
-                        ? "bg-slate-200 text-slate-600"
-                        : "bg-blue-600 text-white"
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-sm ${isUser
+                        ? "bg-bg-sidebar border border-border-subtle text-text-secondary"
+                        : "bg-gradient-to-br from-accent to-blue-500 text-white"
                     }`}
             >
                 {message.name
@@ -19,22 +19,21 @@ function MessageBubble({ message }) {
                     .join("")}
             </div>
             <div className={`flex-1 max-w-[85%] ${isUser ? "" : "text-right"}`}>
-                <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold text-slate-700">
+                <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-xs font-semibold text-text-primary">
                         {message.name}
                     </span>
-                    <span className="text-[11px] text-slate-400">{message.time}</span>
+                    <span className="text-[11px] text-text-muted">{message.time}</span>
                     {message.sentiment === "angry" && (
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
-                            <AlertTriangle size={10} />
-                            Angry
+                        <span className="pill-angry ml-1">
+                            😡 Angry
                         </span>
                     )}
                 </div>
                 <div
-                    className={`inline-block text-sm leading-relaxed px-4 py-3 rounded-2xl ${isUser
-                            ? "bg-white border border-slate-200 text-slate-700 rounded-tl-sm"
-                            : "bg-blue-600 text-white rounded-tr-sm"
+                    className={`inline-block text-sm leading-relaxed px-4 py-3 rounded-2xl shadow-sm ${isUser
+                            ? "bg-bg-sidebar border border-border-subtle text-text-primary rounded-tl-sm"
+                            : "bg-gradient-to-br from-accent to-blue-600 text-white rounded-tr-sm shadow-accent/20"
                         }`}
                 >
                     {message.text}
@@ -51,17 +50,17 @@ export default function TicketDetail({ ticket, liveAI, aiLoading, aiError, onTic
 
     if (!ticket) {
         return (
-            <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+            <div className="flex-1 flex items-center justify-center text-text-muted text-sm bg-bg-main">
                 Select a ticket to view details
             </div>
         );
     }
 
     const badgeColor = {
-        red: "bg-red-50 text-red-700 border-red-200",
-        orange: "bg-amber-50 text-amber-700 border-amber-200",
-        green: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        blue: "bg-blue-50 text-blue-700 border-blue-200",
+        red: "pill-angry",
+        orange: "pill-neutral",
+        green: "pill-positive",
+        blue: "bg-blue-500/15 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded-full text-[10px] font-semibold",
     };
 
     // Use live API data when available, fall back to mock data
@@ -105,40 +104,47 @@ export default function TicketDetail({ ticket, liveAI, aiLoading, aiError, onTic
     }
 
     return (
-        <div className="flex-1 flex flex-col min-w-0 bg-white">
+        <div className="flex-1 flex flex-col min-w-0 bg-bg-main">
             {/* Header */}
-            <div className="shrink-0 px-6 py-4 border-b border-slate-200 bg-white">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-lg font-semibold text-slate-800">
-                                Ticket #{ticket.id}: {ticket.snippet}
-                            </h2>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-sm text-slate-500">by {ticket.user}</span>
-                            <span className="flex items-center gap-1 text-xs text-slate-400">
-                                <Clock size={12} />
-                                {ticket.timestamp}
-                            </span>
-                        </div>
+            <div className="shrink-0 px-6 py-5 border-b border-border-subtle bg-bg-main flex items-start justify-between">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-lg font-semibold text-text-primary tracking-tight">
+                            Ticket #{ticket.id}: {ticket.snippet}
+                        </h2>
                     </div>
-                    <button className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer">
+                    <div className="flex items-center gap-3 mt-1.5">
+                        <span className="text-sm font-medium text-text-secondary">by {ticket.user}</span>
+                        <span className="flex items-center gap-1.5 text-xs text-text-muted">
+                            <Clock size={12} />
+                            {ticket.timestamp}
+                        </span>
+                    </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                    {ticket.status !== 'resolved' && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-error/10 border border-error/20 text-error font-semibold text-xs animate-pulse">
+                            <Clock size={14} />
+                            Respond in 4:32
+                        </div>
+                    )}
+                    <button className="p-2 rounded-xl hover:bg-bg-sidebar text-text-muted hover:text-text-primary transition-colors cursor-pointer">
                         <MoreHorizontal size={18} />
                     </button>
                 </div>
+            </div>
 
-                {/* Badge row */}
-                <div className="flex flex-wrap gap-2 mt-3">
-                    {ticket.badges.map((badge) => (
-                        <span
-                            key={badge.label}
-                            className={`text-[11px] font-medium px-2.5 py-1 rounded-full border ${badgeColor[badge.color] || ""}`}
-                        >
-                            {badge.label}
-                        </span>
-                    ))}
-                </div>
+            {/* Badge row moved directly under header context */}
+            <div className="px-6 py-3 bg-bg-sidebar/30 border-b border-border-subtle flex flex-wrap gap-2">
+                {ticket.badges.map((badge) => (
+                    <span
+                        key={badge.label}
+                        className={badgeColor[badge.color] || "text-[10px] font-semibold px-2.5 py-1 rounded-full bg-bg-sidebar border border-border-subtle text-text-secondary"}
+                    >
+                        {badge.label}
+                    </span>
+                ))}
             </div>
 
             {/* Message History + AI Panel */}
@@ -180,8 +186,8 @@ export default function TicketDetail({ ticket, liveAI, aiLoading, aiError, onTic
                 )}
             </div>
 
-            {/* Reply bar */}
-            <div className="shrink-0 px-6 py-3 border-t border-slate-200 bg-slate-50/50">
+            {/* Reply bar & Smart Suggestions */}
+            <div className="shrink-0 px-6 py-4 border-t border-border-subtle bg-bg-main flex flex-col gap-3">
                 <div className="flex items-center gap-3">
                     <input
                         type="text"
@@ -189,15 +195,28 @@ export default function TicketDetail({ ticket, liveAI, aiLoading, aiError, onTic
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         disabled={sending || !hasBackendId}
-                        className="flex-1 px-4 py-2.5 text-sm rounded-xl bg-white border border-slate-200 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        className="flex-1 px-4 py-3 text-sm rounded-xl bg-bg-sidebar border border-border-subtle text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     />
                     <button
                         onClick={handleSendReply}
                         disabled={sending || !replyText.trim() || !hasBackendId}
-                        className="p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="btn-primary p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                        {sending && <Loader2 size={14} className="animate-spin" />}
-                        <Send size={16} />
+                        {sending && <Loader2 size={16} className="animate-spin" />}
+                        <Send size={18} className="translate-x-[1px] translate-y-[-1px]" />
+                    </button>
+                </div>
+                
+                {/* Smart Suggestions */}
+                <div className="flex gap-2">
+                    <button onClick={() => setReplyText("Here is the tracking link for your order: ")} className="btn-secondary px-3 py-1.5 text-xs">
+                        Tracking Link
+                    </button>
+                    <button onClick={() => setReplyText("I have processed a full refund for you.")} className="btn-secondary px-3 py-1.5 text-xs">
+                        Full Refund
+                    </button>
+                    <button onClick={() => setReplyText("Could you please provide a screenshot of the issue?")} className="btn-secondary px-3 py-1.5 text-xs">
+                        Request Screenshot
                     </button>
                 </div>
             </div>
