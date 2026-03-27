@@ -7,6 +7,8 @@
 
 ---
 
+demo link: 
+
 ## 🛑 The Problem
 Every business has a support problem: too many tickets, not enough people, and customers waiting. Traditional support systems are inherently reactive. A ticket comes in. Someone reads it. Someone replies. Hours pass. Sometimes days. The customer is frustrated, the agent is overwhelmed, and the business is losing trust.
 
