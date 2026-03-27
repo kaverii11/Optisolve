@@ -36,7 +36,17 @@ class TicketStatusResponse(BaseModel):
 class AgentTicketView(BaseModel):
     ticket_id: int
     text: str
-    draft_reply: str
+    draft_reply: Optional[str] = None
+    confidence: float
+
+
+class AdminTicketView(BaseModel):
+    ticket_id: int
+    text: str
+    tier: TicketTier
+    status: TicketStatus
+    draft_reply: Optional[str] = None
+    final_reply: Optional[str] = None
     confidence: float
 
 
@@ -45,11 +55,20 @@ class AgentResponseRequest(BaseModel):
     final_reply: str = Field(..., min_length=1)
 
 
+class DashboardMetricsResponse(BaseModel):
+    total_tickets: int
+    ai_helped_tickets: int
+    tier1_auto_resolved: int
+    tier2_human_review: int
+    tier3_escalated: int
+    vector_db_updates: int
+
+
 class Ticket(BaseModel):
     ticket_id: int
     text: str
     status: TicketStatus
     tier: TicketTier
-    draft_reply: str
+    draft_reply: Optional[str] = None
     final_reply: Optional[str] = None
     confidence: float

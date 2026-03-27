@@ -15,7 +15,7 @@ class TicketStore:
         text: str,
         tier: str,
         status: str,
-        draft_reply: str,
+        draft_reply: Optional[str],
         confidence: float,
     ) -> Ticket:
         with self._lock:
@@ -34,10 +34,10 @@ class TicketStore:
             self._tickets[ticket_id] = ticket
             return ticket
 
-    def get_ticket(self, ticket_id: int) -> Optional[Ticket]:
+    def get_ticket(self, ticket_id: int) -> Ticket | None:
         return self._tickets.get(ticket_id)
 
-    def update_ticket(self, ticket_id: int, **updates) -> Optional[Ticket]:
+    def update_ticket(self, ticket_id: int, **updates) -> Ticket | None:
         ticket = self._tickets.get(ticket_id)
         if not ticket:
             return None
@@ -54,6 +54,9 @@ class TicketStore:
             for ticket in self._tickets.values()
             if ticket.tier == "tier2" and ticket.status == "waiting_for_agent"
         ]
+
+    def get_all_tickets(self) -> list[Ticket]:
+        return sorted(self._tickets.values(), key=lambda ticket: ticket.ticket_id, reverse=True)
 
 
 ticket_store = TicketStore()

@@ -12,7 +12,7 @@ from backend.models.ticket_models import (
 )
 from backend.services.ai_service import analyze_ticket
 from backend.services.routing_service import routing_logic
-from backend.services.sentiment_service import sentiment_score
+from backend.services.sentiment_service import sentiment_engine  # ← fixed import
 
 router = APIRouter(tags=["tickets"])
 
@@ -30,10 +30,23 @@ def submit_ticket(payload: SubmitTicketRequest):
     confidence = float(analysis["confidence"])
     draft_reply = str(analysis["draft_reply"])
 
-    sentiment = sentiment_score(payload.text)
+    sentiment_result = sentiment_engine.analyze(payload.text)  # ← returns dict
+    sentiment = float(sentiment_result["score"])    
+
+    print(f"DEBUG sentiment: {sentiment_result}")  # ← add this
+    print(f"DEBUG sentiment score: {sentiment}")         # ← extract float
+
     tier, adjusted_confidence = routing_logic(confidence, sentiment)
+    print(f"DEBUG tier: {tier}, adjusted_confidence: {adjusted_confidence}") 
 
     if tier == "tier1":
+        ticket_store.create_ticket(
+            text=payload.text,
+            tier="tier1",
+            status="resolved",
+            draft_reply=draft_reply,
+            confidence=adjusted_confidence,
+        )
         return SubmitTicketTier1Response(tier="tier1", reply=draft_reply)
 
     if tier == "tier2":
@@ -54,7 +67,7 @@ def submit_ticket(payload: SubmitTicketRequest):
         text=payload.text,
         tier="tier3",
         status="escalated",
-        draft_reply=draft_reply,
+        draft_reply=None,
         confidence=adjusted_confidence,
     )
     return SubmitTicketTier3Response(
