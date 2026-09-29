@@ -18,8 +18,11 @@ if not api_key:
 
 client = OpenAI(
     base_url="https://api.groq.com/openai/v1",
-    api_key=api_key
+    api_key=api_key,
+    max_retries=6,  # ride out Groq free-tier rate limits (429) instead of failing
 )
+
+REPLY_MODEL = "openai/gpt-oss-120b"
 
 # 3. VECTOR STORE
 from backend.utils.knowledge_base import get_collection
@@ -36,7 +39,7 @@ AGENT_SOURCES = {"agent_resolution", "agent_turn", "resolved_conversation"}
 
 def analyze_ticket(text: str) -> Dict[str, Union[float, str]]:
     """
-    RAG-based analysis using Groq (Llama 3.3).
+    RAG-based analysis using Groq (gpt-oss-120b).
 
     Seed entries and agent-resolved examples live in the same Chroma collection,
     so one retrieval covers both: once agents resolve an issue, similar queries
@@ -84,6 +87,7 @@ Rules:
 - Avoid long explanations, but keep the tone warm.
 - If key details are missing, ask at most 2 short clarifying questions.
 - Use provided context where relevant.
+- Write plain text only: no markdown, bold, or asterisks.
 """
 
     user_prompt = (
@@ -92,9 +96,8 @@ Rules:
         "Write a pinpoint support reply following the required structure."
     )
 
-    # Using llama-3.3-70b-versatile for high quality responses
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=REPLY_MODEL,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -161,7 +164,7 @@ Conversation:
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=REPLY_MODEL,
             messages=[
                 {"role": "system", "content": "You are a concise support summarizer."},
                 {"role": "user", "content": summary_prompt},

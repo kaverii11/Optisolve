@@ -7,19 +7,20 @@ from openai import OpenAI
 load_dotenv()
 logger = logging.getLogger(__name__)
 client = OpenAI(
-    api_key=os.getenv("SAMBANOVA_API_KEY"),
-    base_url="https://api.sambanova.ai/v1"
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1",
+    max_retries=6,  # ride out Groq free-tier rate limits (429) instead of failing
 )
 
 
 class SentimentService:
     """
-    Uses SambaNova API for context-aware sentiment analysis.
+    Uses a small LLM on Groq for context-aware sentiment analysis.
     """
 
     def analyze(self, text: str):
         """
-        Sends text to SambaNova API for sentiment.
+        Sends text to the sentiment model.
         Returns: {"score": -1..1, "sentiment": label}
         """
 
@@ -42,7 +43,7 @@ Text: "{text}"
 
         try:
             response = client.chat.completions.create(
-                model="Meta-Llama-3.1-8B-Instruct",
+                model="openai/gpt-oss-20b",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0
             )
@@ -58,7 +59,7 @@ Text: "{text}"
             return json.loads(content)
 
         except Exception as e:
-            logger.warning("SambaNova sentiment call failed: %s", e)
+            logger.warning("Sentiment call failed: %s", e)
             return {"sentiment": "neutral", "score": 0.0}
 
 

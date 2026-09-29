@@ -26,8 +26,8 @@ For each customer message (`POST /conversation/{id}/message`):
 1. **Retrieval (RAG)** – the message is embedded with `all-MiniLM-L6-v2` (sentence-transformers, runs locally) and the top 3 matches are pulled from a ChromaDB collection using cosine distance. The collection holds both the seed entries and agent-resolved examples.
 2. **Confidence score** – computed from the retrieval similarities:
    `0.75 × top + 0.25 × mean`
-3. **Draft reply** – Llama 3.3 70B (via Groq) writes a short reply (under 110 words, numbered steps) using the retrieved past solutions as context.
-4. **Sentiment** – Llama 3.1 8B (via SambaNova) scores the message from −1 to 1. A score of −0.7 or lower lowers confidence by 0.2.
+3. **Draft reply** – gpt-oss-120b (via Groq) writes a short plain-text reply (under 110 words, numbered steps) using the retrieved past solutions as context.
+4. **Sentiment** – gpt-oss-20b (via Groq) scores the message from −1 to 1. A score of −0.7 or lower lowers confidence by 0.2.
 5. **Routing** on the adjusted confidence:
 
 | Tier | Confidence | What happens |
@@ -43,20 +43,20 @@ Once a conversation is with an agent, further customer messages go to the agent,
 When an agent resolves a conversation (`POST /agent/conversation/{id}/resolve`):
 
 - **Turn chunks** – each customer message and the agent reply that followed are stored in ChromaDB as a new example. If the agent reply is ≥ 85% similar to the AI's draft (difflib `SequenceMatcher`), it is skipped because it adds nothing new.
-- **Conversation summary** – if the customer sent at least 2 messages, Llama 3.3 writes a 2–3 sentence summary of the issue and fix, which is stored alongside the final agent reply.
+- **Conversation summary** – if the customer sent at least 2 messages, gpt-oss-120b writes a 2–3 sentence summary of the issue and fix, which is stored alongside the final agent reply.
 
 These examples go into the same collection used for retrieval, so a repeat of a resolved question matches closely and its confidence rises (for example, from Tier 3 to Tier 1 for an exact repeat), and the agent's answer is passed to the LLM as context. The scripts in `scripts/` walk through this flow against a running server.
 
-The knowledge base is seeded on first start with 10 common issues (password reset, VPN, account lock, billing, installation, slow performance, email).
+The knowledge base is seeded on first start with 20 common issues (password reset, 2FA, VPN, account lock, billing, refunds, subscriptions, team invites, data export, Wi-Fi, installation, updates, email, file sharing and more).
 
 ## Tech Stack
 
 - **Frontend:** React 18, Vite, plain CSS, lucide-react icons. Polls the backend every 4 seconds for updates.
 - **Backend:** Python, FastAPI, Pydantic.
 - **Vector store:** ChromaDB (persisted to `./chroma_db`), sentence-transformers `all-MiniLM-L6-v2` embeddings.
-- **LLMs** (called through the `openai` SDK against OpenAI-compatible endpoints):
-  - Groq – `llama-3.3-70b-versatile` for replies and conversation summaries
-  - SambaNova – `Meta-Llama-3.1-8B-Instruct` for sentiment
+- **LLMs** on Groq (called through the `openai` SDK against Groq's OpenAI-compatible endpoint):
+  - `openai/gpt-oss-120b` for replies and conversation summaries
+  - `openai/gpt-oss-20b` for sentiment
 - **App data:** conversations and tickets are kept in memory.
 
 ## Project Structure
@@ -94,7 +94,7 @@ python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-cp .env.example .env             # then add your GROQ_API_KEY and SAMBANOVA_API_KEY
+cp .env.example .env             # then add your GROQ_API_KEY
 
 python -m uvicorn backend.main:app --reload
 ```
@@ -123,3 +123,4 @@ Set `OPTISOLVE_API_URL` if the backend isn't on `http://localhost:8000`. `script
 - No authentication – the username typed at login is the only identity, and agent endpoints are open.
 - Retrieval, reply generation and sentiment run one after another, and a reply is generated even for Tier 3.
 - If the sentiment call fails or returns invalid JSON, the message is treated as neutral.
+- Groq's free tier allows about 1,000 requests a day per model and 8,000 tokens a minute. The client retries automatically when rate-limited, but sustained bursts of messages can still fail.
