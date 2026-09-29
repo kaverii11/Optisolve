@@ -23,10 +23,9 @@ It has two views:
 
 For each customer message (`POST /conversation/{id}/message`):
 
-1. **Retrieval (RAG)** – the message is embedded with `all-MiniLM-L6-v2` (sentence-transformers, runs locally) and the top 3 matches are pulled from a ChromaDB collection using cosine distance.
+1. **Retrieval (RAG)** – the message is embedded with `all-MiniLM-L6-v2` (sentence-transformers, runs locally) and the top 3 matches are pulled from a ChromaDB collection using cosine distance. The collection holds both the seed entries and agent-resolved examples.
 2. **Confidence score** – computed from the retrieval similarities:
-   `0.7 × (0.75 × top + 0.25 × mean) + 0.3 × (1 − std)`
-   It is then boosted if a similar **agent-resolved** example exists in memory (+0.10 / +0.15 / +0.20 at similarity ≥ 0.65 / 0.75 / 0.85).
+   `0.75 × top + 0.25 × mean`
 3. **Draft reply** – Llama 3.3 70B (via Groq) writes a short reply (under 110 words, numbered steps) using the retrieved past solutions as context.
 4. **Sentiment** – Llama 3.1 8B (via SambaNova) scores the message from −1 to 1. A score of −0.7 or lower lowers confidence by 0.2.
 5. **Routing** on the adjusted confidence:
@@ -46,7 +45,7 @@ When an agent resolves a conversation (`POST /agent/conversation/{id}/resolve`):
 - **Turn chunks** – each customer message and the agent reply that followed are stored in ChromaDB as a new example. If the agent reply is ≥ 85% similar to the AI's draft (difflib `SequenceMatcher`), it is skipped because it adds nothing new.
 - **Conversation summary** – if the customer sent at least 2 messages, Llama 3.3 writes a 2–3 sentence summary of the issue and fix, which is stored alongside the final agent reply.
 
-These examples feed the confidence boost in step 2, so repeat questions can move from Tier 2/3 to Tier 1. The scripts in `scripts/` walk through this flow against a running server.
+These examples go into the same collection used for retrieval, so a repeat of a resolved question matches closely and its confidence rises (for example, from Tier 3 to Tier 1 for an exact repeat), and the agent's answer is passed to the LLM as context. The scripts in `scripts/` walk through this flow against a running server.
 
 The knowledge base is seeded on first start with 10 common issues (password reset, VPN, account lock, billing, installation, slow performance, email).
 

@@ -31,80 +31,17 @@ collection = get_collection()
 def _normalize_text(text: str) -> str:
     return " ".join(text.lower().strip().split())
 
-def _retrieve_phase2_memory(text: str, n_results: int = 3) -> tuple[list[dict], list[float]]:
-    """
-    Phase 3: Retrieve agent-resolved conversations and turn chunks from Phase 2.
-    Returns (metadata_rows, similarities) for high-quality agent examples.
-    """
-    try:
-        results = collection.query(
-            query_texts=[text],
-            n_results=n_results,
-            where={
-                "$or": [
-                    {"source": "resolved_conversation"},
-                    {"source": "agent_turn"},
-                ]
-            }
-        )
-        
-        if not results or not results.get("ids") or not results["ids"][0]:
-            return [], []
-        
-        distances = results['distances'][0]
-        similarities = [max(0, 1 - d) for d in distances]
-        metadata_rows = results.get("metadatas", [[]])[0]
-        
-        return metadata_rows, similarities
-    except Exception as e:
-        logger.warning("Phase 3 retrieval failed: %s", e)
-        return [], []
-
-
-def _calculate_confidence_boost(similarities: list[float]) -> float:
-    """
-    Phase 3: Calculate confidence boost based on Phase 2 memory retrieved.
-    Boost is proportional to top match quality.
-    """
-    if not similarities:
-        return 0.0
-    
-    top_similarity = max(similarities)
-    
-    if top_similarity >= 0.85:
-        return 0.20  # Strong match from agent-resolved example
-    elif top_similarity >= 0.75:
-        return 0.15  # Good match
-    elif top_similarity >= 0.65:
-        return 0.10  # Moderate match
-    else:
-        return 0.0   # Weak match, no boost
+AGENT_SOURCES = {"agent_resolution", "agent_turn", "resolved_conversation"}
 
 
 def analyze_ticket(text: str) -> Dict[str, Union[float, str]]:
     """
-    RAG-based analysis using Groq (Llama 3.3) with Phase 3 retrieval reranking.
-    
-    Phase 3 improvement: Boost confidence when similar resolved conversations 
-    (summaries and turn chunks from Phase 2) are found in Chroma.
+    RAG-based analysis using Groq (Llama 3.3).
+
+    Seed entries and agent-resolved examples live in the same Chroma collection,
+    so one retrieval covers both: once agents resolve an issue, similar queries
+    match that example and confidence rises through the similarity score itself.
     """
-    normalized_text = _normalize_text(text)
-    learned_matches = collection.get(
-        where={
-            "$and": [
-                {"source": "agent_resolution"},
-                {"ticket_text_normalized": normalized_text},
-            ]
-        }
-    )
-
-    learned_replies = learned_matches.get("metadatas", [])
-    if learned_replies:
-        latest_reply = learned_replies[-1].get("reply")
-        if latest_reply:
-            return {"confidence": 0.98, "draft_reply": latest_reply}
-
-    # Standard retrieval (all knowledge base)
     results = collection.query(
         query_texts=[text],
         n_results=3
@@ -115,22 +52,11 @@ def analyze_ticket(text: str) -> Dict[str, Union[float, str]]:
 
     if not similarities:
         return {"confidence": 0.0, "draft_reply": "No context found."}
-    
+
     top_similarity = similarities[0]
     mean_similarity = np.mean(similarities)
-    retrieval_conf = 0.75 * top_similarity + 0.25 * mean_similarity
-    consistency = 1 - np.std(similarities)
-    
-    confidence = (0.7 * retrieval_conf) + (0.3 * consistency)
+    confidence = 0.75 * top_similarity + 0.25 * mean_similarity
     confidence = round(float(np.clip(confidence, 0.0, 1.0)), 4)
-
-    # ===== PHASE 3: Retrieve and rerank with Phase 2 memory =====
-    phase2_metadata, phase2_similarities = _retrieve_phase2_memory(text, n_results=3)
-    confidence_boost = _calculate_confidence_boost(phase2_similarities)
-    
-    # Apply boost, staying within [0.0, 1.0]
-    confidence = round(float(np.clip(confidence + confidence_boost, 0.0, 1.0)), 4)
-    # ===== END PHASE 3 =====
 
     metadata_rows = results.get("metadatas", [[]])[0]
     context_parts = []
@@ -138,18 +64,11 @@ def analyze_ticket(text: str) -> Dict[str, Union[float, str]]:
         if not isinstance(metadata, dict):
             continue
         text_val = metadata.get("reply") or metadata.get("resolution")
-        if text_val:
-            context_parts.append(str(text_val))
-
-    # Add Phase 2 context if available
-    if phase2_metadata:
-        context_parts.append("[Agent-Resolved Examples]")
-        for metadata in phase2_metadata:
-            if not isinstance(metadata, dict):
-                continue
-            text_val = metadata.get("reply") or metadata.get("resolution")
-            if text_val:
-                context_parts.append(str(text_val))
+        if not text_val:
+            continue
+        if metadata.get("source") in AGENT_SOURCES:
+            text_val = f"[Agent-resolved example] {text_val}"
+        context_parts.append(str(text_val))
 
     retrieved_context = "\n---\n".join(context_parts) if context_parts else "No context found."
 
@@ -204,7 +123,6 @@ def store_agent_resolution(original_ticket: str, agent_reply: str, tier: str) ->
                     "reply": agent_reply,
                     "source": "agent_resolution",
                     "tier": tier,
-                    "ticket_text_normalized": normalized_text,
                 }
             ],
             ids=[resolution_id],
