@@ -2,100 +2,125 @@
   <img src="frontend/public/optisolve-logo.png" alt="OptiSolve Logo" width="200" />
   <h1>OptiSolve</h1>
   <p><b>AI speed. Human touch.</b></p>
-  <p><i>The support system that learns while it works — and works while it learns. Made by Kaveri, Jival, Inesh, Janya - Team codeforcers for ATOS SRIJAN 2026 </i></p>
+  <p><i>Made by Kaveri, Jival, Inesh, Janya - Team codeforcers for ATOS SRIJAN 2026</i></p>
 </div>
 
 ---
 
-demo link: https://drive.google.com/file/d/1ODCI-j1nPftBB69aMu3-EYH3kEsY4aDW/view?usp=sharing
+Demo video: https://drive.google.com/file/d/1ODCI-j1nPftBB69aMu3-EYH3kEsY4aDW/view?usp=sharing
 
-## 🛑 The Problem
-Every business has a support problem: too many tickets, not enough people, and customers waiting. Traditional support systems are inherently reactive. A ticket comes in. Someone reads it. Someone replies. Hours pass. Sometimes days. The customer is frustrated, the agent is overwhelmed, and the business is losing trust.
+## The Problem
+Support teams get more tickets than they have people. Many are repeat questions that already have a known answer, while others need a human's judgement. Treating every ticket the same way means customers wait on simple issues and agents spend time retyping the same replies.
 
-## 💡 The Solution
-**OptiSolve** is an intelligent support orchestration system built to solve the modern inbox. It bridges the gap between full AI automation and necessary human judgment. 
+## What OptiSolve Does
+OptiSolve is a support chat system that decides, per message, whether the AI should answer directly, draft a reply for a human agent, or hand the conversation straight to an agent. When agents resolve conversations, their replies are written back into the knowledge base, so similar questions later get higher confidence.
 
-When a user submits a support ticket, OptiSolve runs two analyses in parallel:
-1. **RAG Pipeline:** It searches a vector knowledge base of past resolved tickets to find relevant solutions and generate a drafted reply using an LLM.
-2. **Sentiment Analysis:** It assesses the emotional tone of the user's message (e.g., frustrated, distressed, neutral).
+It has two views:
+- **User Portal** – a customer opens a conversation and chats with support.
+- **Agent Inbox** – agents see escalated conversations (with the AI's draft where one exists), reply, and mark them resolved. It also shows live counts of conversations by status.
 
-These two signals combine to form a **Confidence Score**, which drives our dynamic routing engine.
+## How a Message Is Handled
 
----
+For each customer message (`POST /conversation/{id}/message`):
 
-## ⚙️ Three-Tier Orchestration Logic
-Not every ticket needs a human, and not every ticket should be automated. OptiSolve routes every incoming query into one of three tiers:
+1. **Retrieval (RAG)** – the message is embedded with `all-MiniLM-L6-v2` (sentence-transformers, runs locally) and the top 3 matches are pulled from a ChromaDB collection using cosine distance.
+2. **Confidence score** – computed from the retrieval similarities:
+   `0.7 × (0.75 × top + 0.25 × mean) + 0.3 × (1 − std)`
+   It is then boosted if a similar **agent-resolved** example exists in memory (+0.10 / +0.15 / +0.20 at similarity ≥ 0.65 / 0.75 / 0.85).
+3. **Draft reply** – Llama 3.3 70B (via Groq) writes a short reply (under 110 words, numbered steps) using the retrieved past solutions as context.
+4. **Sentiment** – Llama 3.1 8B (via SambaNova) scores the message from −1 to 1. A score of −0.7 or lower lowers confidence by 0.2.
+5. **Routing** on the adjusted confidence:
 
-* **🟢 Tier 1: Auto-Resolution (Confidence > 85%)**
-  The AI knows the answer and the user's sentiment is neutral. The system replies immediately. Ticket closed. No human intervention needed.
-  
-* **🟡 Tier 2: AI-Assisted Approval (Confidence 60-85%)**
-  The AI drafts a high-quality response but lacks total certainty. A human agent receives the draft, reviews it, edits if necessary, and sends the final reply. *The AI does the heavy lifting; the human provides the final judgment.*
-  
-* **🔴 Tier 3: Full Escalation (Confidence < 60% OR High Frustration)**
-  The issue is overly complex or the user is highly agitated. The ticket is immediately routed to a human specialist with a generated "Context Summary" and "Escalation Diagnostic."
+| Tier | Confidence | What happens |
+|---|---|---|
+| 🟢 Tier 1 | ≥ 0.85 | AI reply is sent to the customer immediately. |
+| 🟡 Tier 2 | 0.60 – 0.85 | Conversation moves to the Agent Inbox with the AI draft attached for the agent to review. |
+| 🔴 Tier 3 | < 0.60 | Conversation moves to the Agent Inbox without a draft. |
 
----
+Once a conversation is with an agent, further customer messages go to the agent, not the AI. If the customer writes again after the conversation is resolved, it reopens and goes back to the AI.
 
-## 🧠 The Empathy Engine & Learning Loop
-OptiSolve doesn't just route tickets; it learns from them. 
+## Learning Loop
 
-Every time a human agent corrects an AI-drafted Tier 2 response, that correction goes through a quality gate. If the edit improves the solution, the system's vector database is updated. 
+When an agent resolves a conversation (`POST /agent/conversation/{id}/resolve`):
 
-**Over time, the system gets smarter.** Issues that initially required human review (Tier 2) are confidently handled by the AI (Tier 1) within days. The more it's used, the better it gets—without manual model retraining. 
+- **Turn chunks** – each customer message and the agent reply that followed are stored in ChromaDB as a new example. If the agent reply is ≥ 85% similar to the AI's draft (difflib `SequenceMatcher`), it is skipped because it adds nothing new.
+- **Conversation summary** – if the customer sent at least 2 messages, Llama 3.3 writes a 2–3 sentence summary of the issue and fix, which is stored alongside the final agent reply.
 
-**Zero Cold-Start:** OptiSolve ships with a pre-seeded knowledge base for common industry issues (account access, billing, etc.), meaning it routes intelligently from minute one.
+These examples feed the confidence boost in step 2, so repeat questions can move from Tier 2/3 to Tier 1. The scripts in `scripts/` walk through this flow against a running server.
 
----
+The knowledge base is seeded on first start with 10 common issues (password reset, VPN, account lock, billing, installation, slow performance, email).
 
-## 📊 Projected Impact
-* **30-40% Reduction in MTTR:** Faster resolutions via pre-drafted Tier 2 responses.
-* **20-30% Ticket Deflection:** Proactive resolution at the pre-submission layer.
-* **Reduced Compassion Fatigue:** Agents focus on high-value problem solving, not repetitive typing.
+## Tech Stack
 
----
+- **Frontend:** React 18, Vite, plain CSS, lucide-react icons. Polls the backend every 4 seconds for updates.
+- **Backend:** Python, FastAPI, Pydantic.
+- **Vector store:** ChromaDB (persisted to `./chroma_db`), sentence-transformers `all-MiniLM-L6-v2` embeddings.
+- **LLMs** (called through the `openai` SDK against OpenAI-compatible endpoints):
+  - Groq – `llama-3.3-70b-versatile` for replies and conversation summaries
+  - SambaNova – `Meta-Llama-3.1-8B-Instruct` for sentiment
+- **App data:** conversations and tickets are kept in memory.
 
-## 🛠 Tech Stack
-Built for prototype speed and enterprise scale using an Event-Driven Architecture.
+## Project Structure
 
-* **Frontend:** React, Vite, Tailwind CSS (Real-time SPA with live polling and dynamic agent views).
-* **Backend:** Python, FastAPI (Async request handling & native ML integration).
-* **Databases:** PostgreSQL (Structured Metadata), ChromaDB / Pinecone (Vector Store).
-* **AI Orchestrator:** LangChain.
-* **LLMs & Models:** Gemini Pro / Llama 3 (Generation), Hugging Face Transformers / NLTK VADER (Sentiment).
+```
+backend/
+  main.py                 FastAPI app, CORS, seeds knowledge base on startup
+  routes/
+    conversation_routes.py  chat, agent inbox, resolve, metrics (used by the frontend)
+    ticket_routes.py        single-shot ticket API (/submit-ticket, /ticket-status)
+    agent_routes.py         ticket agent queue, admin view, dashboard metrics
+  services/
+    ai_service.py         retrieval, confidence, reply generation, learning loop
+    sentiment_service.py  LLM sentiment scoring
+    routing_service.py    tier thresholds
+  database/               in-memory conversation and ticket stores
+  utils/knowledge_base.py ChromaDB setup and seed data
+frontend/                 React app (User Portal + Agent Inbox)
+scripts/                  manual end-to-end checks against a running backend
+```
 
----
+Full API docs are available at `http://localhost:8000/docs` when the backend is running.
 
-## 🚀 Getting Started
+## Getting Started
 
-### 1. Clone the Repository
+### 1. Clone
 ```bash
 git clone https://github.com/kaverii11/Optisolve.git
-cd Optisolve/optisolve
+cd Optisolve
 ```
 
-### 2. Start the Backend (FastAPI)
-Activate your virtual environment, install dependencies, and run the server:
-
+### 2. Backend
 ```bash
-# From the optisolve directory
-source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Run the backend
+cp .env.example .env             # then add your GROQ_API_KEY and SAMBANOVA_API_KEY
+
 python -m uvicorn backend.main:app --reload
-
-# The API will be available at http://localhost:8000
-# View interactive docs at http://localhost:8000/docs
 ```
+The API runs at http://localhost:8000. The first start downloads the embedding model.
 
-### 3. Start the Frontend (Vite + React)
-In a new terminal window, navigate to the frontend directory:
-
+### 3. Frontend
+In a new terminal:
 ```bash
 cd frontend
 npm install
 npm run dev
-
-# The app will be available at http://localhost:5173
 ```
+The app runs at http://localhost:5173. To point it at a different backend, copy `frontend/.env.example` to `frontend/.env` and set `VITE_API_BASE_URL`.
+
+### 4. (Optional) Verification scripts
+With the backend running, from the repo root:
+```bash
+pip install requests
+python scripts/phase3_verify.py        # resolves a conversation, then shows confidence rising on a repeat query
+```
+Set `OPTISOLVE_API_URL` if the backend isn't on `http://localhost:8000`. `scripts/phase2_verify.py` reads ChromaDB directly, so run it as `python -m scripts.phase2_verify`.
+
+## Current Limitations
+
+- Conversations and tickets live in memory and are lost on restart (ChromaDB data persists).
+- No authentication – the username typed at login is the only identity, and agent endpoints are open.
+- Retrieval, reply generation and sentiment run one after another, and a reply is generated even for Tier 3.
+- If the sentiment call fails or returns invalid JSON, the message is treated as neutral.

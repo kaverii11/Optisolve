@@ -1,8 +1,11 @@
-import chromadb
-from chromadb.utils import embedding_functions
+import logging
 import os
 
-import os
+import chromadb
+from chromadb.utils import embedding_functions
+
+logger = logging.getLogger(__name__)
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 client = chromadb.PersistentClient(path=os.path.join(BASE_DIR, "chroma_db"))
 
@@ -14,7 +17,7 @@ embedding_model = embedding_functions.SentenceTransformerEmbeddingFunction(
 collection = client.get_or_create_collection(
     name="support_tickets_v2",
     embedding_function=embedding_model,
-    metadata={"hnsw:space": "cosine"}  # ← add this line
+    metadata={"hnsw:space": "cosine"}
 )
 
 def seed_knowledge_base():
@@ -40,7 +43,7 @@ def seed_knowledge_base():
         metadatas=[{"reply": s["reply"], "source": "static"} for s in seeds],
         ids=[f"seed_{i}" for i in range(len(seeds))]
     )
-    print("✅ Knowledge base seeded.")
+    logger.info("Knowledge base seeded with %d entries", len(seeds))
 
 def get_collection():
     return collection

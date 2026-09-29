@@ -1,3 +1,4 @@
+import logging
 import os
 import numpy as np
 from openai import OpenAI
@@ -20,9 +21,10 @@ client = OpenAI(
     api_key=api_key
 )
 
-# 3. IMPORTS AND SEEDING
-from backend.utils.knowledge_base import get_collection, seed_knowledge_base
+# 3. VECTOR STORE
+from backend.utils.knowledge_base import get_collection
 
+logger = logging.getLogger(__name__)
 collection = get_collection()
 
 
@@ -55,7 +57,7 @@ def _retrieve_phase2_memory(text: str, n_results: int = 3) -> tuple[list[dict], 
         
         return metadata_rows, similarities
     except Exception as e:
-        print(f"DEBUG Phase 3 retrieval error: {e}")
+        logger.warning("Phase 3 retrieval failed: %s", e)
         return [], []
 
 
@@ -111,9 +113,6 @@ def analyze_ticket(text: str) -> Dict[str, Union[float, str]]:
     distances = results['distances'][0]
     similarities = [max(0, 1 - d) for d in distances]
 
-    print(f"DEBUG distances: {distances}")
-    print(f"DEBUG similarities: {similarities}")
-    
     if not similarities:
         return {"confidence": 0.0, "draft_reply": "No context found."}
     
@@ -130,10 +129,7 @@ def analyze_ticket(text: str) -> Dict[str, Union[float, str]]:
     confidence_boost = _calculate_confidence_boost(phase2_similarities)
     
     # Apply boost, staying within [0.0, 1.0]
-    original_confidence = confidence
     confidence = round(float(np.clip(confidence + confidence_boost, 0.0, 1.0)), 4)
-    
-    print(f"DEBUG original_confidence: {original_confidence}, phase2_boost: {confidence_boost}, final_confidence: {confidence}")
     # ===== END PHASE 3 =====
 
     metadata_rows = results.get("metadatas", [[]])[0]
@@ -192,19 +188,6 @@ Rules:
         "draft_reply": response.choices[0].message.content
     }
 
-def store_correction(original_ticket: str, ai_draft: str, agent_reply: str) -> bool:
-    similarity = SequenceMatcher(None, ai_draft, agent_reply).ratio()
-    if similarity < 0.85:
-        corr_id = f"corr_{hash(original_ticket + agent_reply) % 10**8}"
-        collection.add(
-            documents=[original_ticket],
-            metadatas=[{"reply": agent_reply, "source": "agent_correction"}],
-            ids=[corr_id]
-        )
-        return True
-    return False
-
-
 def store_agent_resolution(original_ticket: str, agent_reply: str, tier: str) -> bool:
     if not original_ticket or not agent_reply:
         return False
@@ -232,9 +215,8 @@ def store_agent_resolution(original_ticket: str, agent_reply: str, tier: str) ->
 
 
 def get_vector_update_count() -> int:
-    correction_records = collection.get(where={"source": "agent_correction"})
     resolution_records = collection.get(where={"source": "agent_resolution"})
-    return len(correction_records.get("ids", [])) + len(resolution_records.get("ids", []))
+    return len(resolution_records.get("ids", []))
 
 
 def _build_conversation_text(messages: list[dict]) -> str:

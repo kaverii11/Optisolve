@@ -1,9 +1,11 @@
-import os
 import json
+import logging
+import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 client = OpenAI(
     api_key=os.getenv("SAMBANOVA_API_KEY"),
     base_url="https://api.sambanova.ai/v1"
@@ -15,16 +17,6 @@ class SentimentService:
     Uses SambaNova API for context-aware sentiment analysis.
     """
 
-    def __init__(self):
-        # Optional: custom domain-specific words to boost
-        self.custom_lexicon = {}
-
-    def update_word_weight(self, word, weight):
-        """
-        Add or update a word/phrase with custom weight (for boosting).
-        """
-        self.custom_lexicon[word.lower()] = weight
-
     def analyze(self, text: str):
         """
         Sends text to SambaNova API for sentiment.
@@ -33,11 +25,6 @@ class SentimentService:
 
         if not text or not text.strip():
             return {"score": 0.0, "sentiment": "neutral"}
-
-        # Apply custom lexicon amplification
-        for word, weight in self.custom_lexicon.items():
-            if word in text.lower():
-                text += " " + ("very " * int(abs(weight)))
 
         # Create prompt
         prompt = f"""
@@ -71,7 +58,7 @@ Text: "{text}"
             return json.loads(content)
 
         except Exception as e:
-            print("SambaNova API Error:", e)
+            logger.warning("SambaNova sentiment call failed: %s", e)
             return {"sentiment": "neutral", "score": 0.0}
 
 

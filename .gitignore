@@ -3,3 +3,6 @@ chroma_db/
 __pycache__/
 .DS_Store
 .env
+node_modules/
+dist/
+*.zip
