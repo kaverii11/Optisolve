@@ -27,11 +27,11 @@ function getConversationDraft(conversationData, conversationId) {
 
 /* ── STATUS CHIP ─────────────────────────────────────────────── */
 const STATUS_STYLES = {
-  ai_handling:    { color: "#6eb5ff", borderColor: "#1a3a5c", background: "#0a1e30" },
-  pending_agent:  { color: "#e0a852", borderColor: "#3a2a0a", background: "#1e1500" },
-  agent_handling: { color: "#52e08a", borderColor: "#0a2a0f", background: "#051205" },
-  resolved:       { color: "#8e6bff", borderColor: "#3a2a68", background: "#151022" },
-  none:           { color: "#8e6bff", borderColor: "#3a2a68", background: "#151022" },
+  ai_handling:    { color: "#1f5aa6", borderColor: "#b9d3f3", background: "#e9f2fd" },
+  pending_agent:  { color: "#8a5a10", borderColor: "#efd39a", background: "#fdf3df" },
+  agent_handling: { color: "#16683a", borderColor: "#b5e0c4", background: "#e5f5eb" },
+  resolved:       { color: "#4a2f86", borderColor: "#d3c5ee", background: "#efe9f9" },
+  none:           { color: "#4a2f86", borderColor: "#d3c5ee", background: "#efe9f9" },
 };
 
 function StatusChip({ status }) {
@@ -590,10 +590,10 @@ function AgentPortal({ username, onLogout }) {
 
       <section className="grid metrics-grid">
         <MetricCard title="Total" value={metrics.total_conversations} />
-        <MetricCard title="AI Handling" value={metrics.ai_handling} color="#6eb5ff" />
-        <MetricCard title="Pending" value={metrics.pending_agent} color="#e0a852" />
-        <MetricCard title="Agent Active" value={metrics.agent_handling} color="#52e08a" />
-        <MetricCard title="Resolved" value={metrics.resolved} color="#8e6bff" />
+        <MetricCard title="AI Handling" value={metrics.ai_handling} color="#1f5aa6" />
+        <MetricCard title="Pending" value={metrics.pending_agent} color="#b7791f" />
+        <MetricCard title="Agent Active" value={metrics.agent_handling} color="#1e8a4c" />
+        <MetricCard title="Resolved" value={metrics.resolved} color="#6d28d9" />
       </section>
 
       <div className="layout">
